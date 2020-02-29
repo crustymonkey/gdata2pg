@@ -1,0 +1,26 @@
+[DEFAULT]
+# Basic rollups
+rollups_derive = sum
+rollups_counter = sum, avg, pct(50), pct(90), pct(95), pct(99)
+rollups_gauge = avg, pct(50), pct(90), pct(95), pct(99)
+
+# DB connection info
+db_type = postgres
+db_name = grafana
+db_user = gdata2pg
+db_password = cNfLFZfjY8KgkGLNGIvAAx08RfgV8eAy
+db_loc = localhost:5432
+
+[main]
+# You can override any basic items here, like db connection info
+
+[users]
+# This is a map of username to password for HTTP auth
+admin = admin
+
+# [metric.name]
+# You can override rollups for any particular metric name
+# rollups_counter = sum, avg
+
+# [hostname:metric.name]
+# You can also override metrics for just particular hosts
