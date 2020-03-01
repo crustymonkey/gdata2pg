@@ -1,4 +1,3 @@
-from .config import GDConfig
 from flask import Flask, request, Response
 from flask_httpauth import HTTPBasicAuth
 import json
@@ -6,19 +5,18 @@ import logging
 
 
 APP = Flask('gdata2pg')
-ARGS = None
 AUTH = HTTPBasicAuth()
 CONF = None
 INITIALIZED = False
 
 
-def _handle_post():
+def _handle_post() -> None:
     raw_data = request.get_data()
     data = json.loads(raw_data)
 
 
 @AUTH.verify_password
-def verify_password(user, pwd):
+def verify_password(user: str, pwd: str) -> bool:
     if user in CONF['users']:
         return CONF['users'][user] == pwd
     return False
@@ -26,7 +24,7 @@ def verify_password(user, pwd):
 
 @APP.route('/', methods=['GET', 'POST'])
 @AUTH.login_required
-def index():
+def index() -> Response:
     if request.method == 'GET':
         return 'Hello, {}\n'.format(AUTH.username())
     else:
@@ -38,13 +36,11 @@ def index():
         return 'ok\n'
 
 
-def flask_init(args):
+def flask_init(config: ConfigParser) -> None:
     """
     Initialize the globals for use
     """
-    global ARGS, CONF, INITIALIZED 
+    global CONF, INITIALIZED 
 
     INITIALIZED = True
-    ARGS = args
-    CONF = GDConfig()
-    CONF.read(args.config)
+    CONF = config

@@ -4,6 +4,8 @@ import logging
 import sys
 from argparse import ArgumentParser
 from libgd2pg.flask import APP, flask_init
+from libgd2pg.config import GDConfig
+from libgd2pg.datamanager import dm
 
 
 def get_args():
@@ -29,7 +31,14 @@ def setup_logging(args):
 def main():
     args = get_args()
     setup_logging(args)
-    flask_init(args)
+
+    config = GDConfig()
+    config.read(args.config)
+
+    # Initialize everything with the config
+    flask_init(config)
+    dm(config)
+
     APP.run()
 
     return 0
