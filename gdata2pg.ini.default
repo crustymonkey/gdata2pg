@@ -21,6 +21,3 @@ admin = admin
 # [metric.name]
 # You can override rollups for any particular metric name
 # rollups_counter = sum, avg
-
-# [hostname:metric.name]
-# You can also override metrics for just particular hosts

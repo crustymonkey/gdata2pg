@@ -2,13 +2,16 @@ from .error import InvalidConfigError, InvalidDataError
 from .config import GDConfig
 from collections import defaultdict, namedtuple
 from io import StringIO
-from typing import Union, Dict, Sequence, DefaultDict, List, Any, NamedTuple
+from numpy import percentile
+from typing import Union, Dict, Sequence, DefaultDict, List, Any, Tuple
 import logging
+import re
 
 
 class DataManager:
     # This is an intermediate data tuple used in _get_metric
     DataTup = namedtuple('DataTup', ['name', 'type', 'value'])
+    PCT_RE = re.compile('pct\((\d+)\)', re.I)
 
     def __init__(self, config: GDConfig):
         self.config = config
@@ -19,7 +22,7 @@ class DataManager:
         This will push data into the ent map.  This takes either a list
         or a single dict of data
         """
-        if isinstance(dict):
+        if isinstance(data, dict):
             data = [data]
 
         # Loop over all the data dicts, and manage those
@@ -37,7 +40,20 @@ class DataManager:
         """
         This will roll up and return the aggregated metrics
         """
-        pass
+        ret = {}
+        for ent, data in self.ent_map.items():
+            # First we have the get the "compiled" metric name/type/value
+            # DataTups to create an intermediate dictionary that we can use
+            # to compute the aggregated data points
+            agg_dtups = self._get_agg_dtups(data)
+            
+            # Now we need to get the computed metrics for the data
+            comp_metrics = self._get_comp_metrics(agg_dtups)
+
+            # And finally, we attach that dictionary to our ent
+            ret[ent] = comp_metrics
+
+        return ret
 
     def get_metrics_reset(self) -> Any:
         """
@@ -50,7 +66,7 @@ class DataManager:
     def _init_map(self) -> DefaultDict[str, List[Dict[str, Any]]]:
         return defaultdict(list)
 
-    def _get_metric(self, data: Dict[str, Any]) -> List[Tuple[str, str, Any]]:
+    def _get_metrics(self, data: Dict[str, Any]) -> List[Tuple[str, str, Any]]:
         """
         Calculates the metric name from the data in the dict and returns
         a list of DataTup for each specific metric in this data instance
@@ -83,8 +99,73 @@ class DataManager:
             logging.debug('DATA: {}'.format(data))
             raise InvalidDataError('Invalid data: {}'.format(data))
 
-        # If we've made it here, return the metric name
+        # If we've made it here, return the metrics
         return ret
+
+    def _get_agg_dtups(
+            self,
+            data: List[Dict[str, Any]],
+            ) -> Dict[str, List[Tuple[str, str, Any]]]:
+        """
+        This will return a mapping of metric name -> list of DataTups
+        """
+        metrics = defaultdict(list)
+        for datad in data:
+            dtups = self._get_metrics(datad)
+            for dtup in dtups:
+                metrics[dtup.name].append(dtup)
+
+        return metrics
+
+    def _get_comp_metrics(
+            self,
+            agg_dtups: Dict[str, List[Tuple[str, str, Any]]],
+            ) -> Dict[str, Any]:
+        """
+        Given the dictionary including the list of aggregated DataTups,
+        return a final dict of computed metric_name -> value
+        """
+        ret = {}
+        for metric_name, data in agg_dtups.items():
+            # TODO: Add rollup overrides on metric name
+            rollups = self.config['main'].getlist(
+                'rollups_{}'.format(data[0].type))
+            for rollup in rollups:
+                # Get the computed result for the rollup
+                suffix = rollup
+                m = self.PCT_RE.match(rollup)
+                if m:
+                    # We have a percentile to manage here
+                    rollup = 'pct'
+                    pct = int(m.group(1))
+                    res = getattr(self, '_comp_{}'.format(rollup))(data, pct)
+                    suffix = 'p{}'.format(pct)
+                else:
+                    res = getattr(self, '_comp_{}'.format(rollup))(data)
+                ret['{}.{}'.format(metric_name, suffix)] = res
+
+        return ret
+
+    def _comp_sum(self, data: List[Tuple[str, str, Any]]) -> Union[float, int]:
+        total = 0
+        for dtup in data:
+            total += dtup.value
+
+        return total
+
+    def _comp_avg(self, data: List[Tuple[str, str, Any]]) -> Union[float, int]:
+        total = self._comp_sum(data)
+        return total / len(data)
+
+    def _comp_pct(
+            self,
+            data: List[Tuple[str, str, Any]],
+            pct: int,
+            ) -> Union[float, int]:
+        """
+        Compute the percentile specified and return it
+        """
+        return percentile([i.value for i in data], pct)
 
 
 #
