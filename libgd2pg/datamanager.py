@@ -36,7 +36,7 @@ class DataManager:
 
             self.ent_map[ent].append(d)
 
-    def get_metrics(self) -> Dict[str, Tuple[str, float]]:
+    def get_metrics(self) -> Dict[str, Dict[str, Any]]:
         """
         This will roll up and return the aggregated metrics
         """
@@ -66,7 +66,7 @@ class DataManager:
     def _init_map(self) -> DefaultDict[str, List[Dict[str, Any]]]:
         return defaultdict(list)
 
-    def _get_metrics(self, data: Dict[str, Any]) -> List[Tuple[str, str, Any]]:
+    def _get_metrics(self, data: Dict[str, Any]) -> List[DataTup]:
         """
         Calculates the metric name from the data in the dict and returns
         a list of DataTup for each specific metric in this data instance
@@ -105,7 +105,7 @@ class DataManager:
     def _get_agg_dtups(
             self,
             data: List[Dict[str, Any]],
-            ) -> Dict[str, List[Tuple[str, str, Any]]]:
+            ) -> Dict[str, List[DataTup]]:
         """
         This will return a mapping of metric name -> list of DataTups
         """
@@ -119,7 +119,7 @@ class DataManager:
 
     def _get_comp_metrics(
             self,
-            agg_dtups: Dict[str, List[Tuple[str, str, Any]]],
+            agg_dtups: Dict[str, List[DataTup]],
             ) -> Dict[str, Any]:
         """
         Given the dictionary including the list of aggregated DataTups,
@@ -146,20 +146,20 @@ class DataManager:
 
         return ret
 
-    def _comp_sum(self, data: List[Tuple[str, str, Any]]) -> Union[float, int]:
+    def _comp_sum(self, data: List[DataTup]) -> Union[float, int]:
         total = 0
         for dtup in data:
             total += dtup.value
 
         return total
 
-    def _comp_avg(self, data: List[Tuple[str, str, Any]]) -> Union[float, int]:
+    def _comp_avg(self, data: List[DataTup]) -> Union[float, int]:
         total = self._comp_sum(data)
         return total / len(data)
 
     def _comp_pct(
             self,
-            data: List[Tuple[str, str, Any]],
+            data: List[DataTup],
             pct: int,
             ) -> Union[float, int]:
         """
