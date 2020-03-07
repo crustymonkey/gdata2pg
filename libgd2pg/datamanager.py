@@ -85,7 +85,7 @@ class DataManager:
             if data['type_instance']:
                 s.write('.{}'.format(data['type_instance']))
 
-            metric_name = s.get_value()
+            metric_name = s.getvalue()
             for i, dsn in enumerate(data['dsnames']):
                 if dsn == 'value':
                     ret.append(self.DataTup(

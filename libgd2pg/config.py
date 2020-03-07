@@ -1,7 +1,7 @@
 from configparser import ConfigParser
 
 class GDConfig(ConfigParser):
-    def getlist(self, section, option):
+    def getlist(self, section, option, *args, **kwargs):
         """
         This will return the value as a list of strings from a comma-separated
         list of values
