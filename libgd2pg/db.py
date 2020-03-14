@@ -16,7 +16,7 @@ class DB:
         self.conn.autocommit = False
 
     def __del__(self):
-        if self.conn:
+        if hasattr(self, 'conn') and self.conn:
             try:
                 self.conn.close()
             except Exception:
@@ -37,7 +37,7 @@ class DB:
             return True
 
         ret = False
-        dt = datetime.now() if dt is None else dt
+        dt = datetime.utcnow() if dt is None else dt
         if minute_mark:
             # Most recent minute mark
             dt_str = dt.strftime('%Y-%m-%d %H:%M:00')
@@ -51,10 +51,13 @@ class DB:
             ''').strip()
 
         try:
-            with self.conn as curs:
+            with self.conn.cursor() as curs:
                 for entity, keys in metrics.items():
                     for key, val in keys.items():
                         curs.execute(query, (entity, key, dt_str, val))
+        except psycopg2.errors.AdminShutdown:
+            logging.error('The connection has been terminated, reconnecting')
+            self.conn = self._get_conn()
         except Exception as e:
             # Log the exception and roll back
             logging.exception('Failed to insert metrics into the db')
@@ -65,7 +68,7 @@ class DB:
 
         return ret
 
-    def _get_conn(self) -> psycopg2.connection:
+    def _get_conn(self) -> psycopg2.extensions.connection:
         """
         Returns the database connection
         """

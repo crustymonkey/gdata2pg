@@ -42,7 +42,7 @@ def main():
     db = DB(config)
     timer = InsTimer(dmgr, db)
     timer.start()
-    flask_init(config)
+    flask_init(config, dmgr)
 
     APP.run()
 
