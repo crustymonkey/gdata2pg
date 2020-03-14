@@ -3,15 +3,33 @@ from .config import GDConfig
 from collections import defaultdict, namedtuple
 from io import StringIO
 from numpy import percentile
-from typing import Union, Dict, Sequence, DefaultDict, List, Any, Tuple
+from threading import RLock
+from typing import (
+    Union,
+    Dict,
+    Sequence,
+    DefaultDict,
+    List,
+    Any,
+    Tuple,
+    NamedTuple,
+)
 import logging
 import re
 
 
+class DataTup(NamedTuple):
+    """
+    This is an intermediate data tuple used in _get_metric
+    """
+    name: str
+    type: str
+    value: Union[int, float]
+
+
 class DataManager:
-    # This is an intermediate data tuple used in _get_metric
-    DataTup = namedtuple('DataTup', ['name', 'type', 'value'])
     PCT_RE = re.compile('pct\((\d+)\)', re.I)
+    LOCK = RLock()
 
     def __init__(self, config: GDConfig):
         self.config = config
@@ -41,6 +59,7 @@ class DataManager:
         This will roll up and return the aggregated metrics
         """
         ret = {}
+        self.LOCK.acquire()
         for ent, data in self.ent_map.items():
             # First we have the get the "compiled" metric name/type/value
             # DataTups to create an intermediate dictionary that we can use
@@ -52,15 +71,19 @@ class DataManager:
 
             # And finally, we attach that dictionary to our ent
             ret[ent] = comp_metrics
+        self.LOCK.release()
 
         return ret
 
-    def get_metrics_reset(self) -> Any:
+    def get_metrics_reset(self) -> Dict[str, Dict[str, Any]]:
         """
         This will get the metrics and reset the internal ent map
         """
+        self.LOCK.acquire()
         metrics = self.get_metrics()
         self.ent_map = self._init_map()
+        self.LOCK.release()
+
         return metrics
 
     def _init_map(self) -> DefaultDict[str, List[Dict[str, Any]]]:
@@ -88,11 +111,11 @@ class DataManager:
             metric_name = s.getvalue()
             for i, dsn in enumerate(data['dsnames']):
                 if dsn == 'value':
-                    ret.append(self.DataTup(
+                    ret.append(DataTup(
                         metric_name, data['dstypes'][i], data['values'][i]))
                 else:
                     tmp = '{}.{}'.format(metric_name, dsn)
-                    ret.append(self.DataTup(
+                    ret.append(DataTup(
                         tmp, data['dstypes'][i], data['values'][i]))
         except Exception:
             logging.error('Invalid data object for metric name')

@@ -17,15 +17,15 @@ class TestDM(unittest.TestCase):
         self._reset_dm()
         self._test_dtups = {
             'd1': [
-                dmgr.DataManager.DataTup('a', 'derive', 1.1),
-                dmgr.DataManager.DataTup('a', 'derive', 3.3),
-                dmgr.DataManager.DataTup('a', 'derive', 4.2),
+                dmgr.DataTup('a', 'derive', 1.1),
+                dmgr.DataTup('a', 'derive', 3.3),
+                dmgr.DataTup('a', 'derive', 4.2),
             ],
             'd2': [
-                dmgr.DataManager.DataTup('b', 'gauge', 1),
-                dmgr.DataManager.DataTup('b', 'gauge', 3),
-                dmgr.DataManager.DataTup('b', 'gauge', 4),
-                dmgr.DataManager.DataTup('b', 'gauge', 9),
+                dmgr.DataTup('b', 'gauge', 1),
+                dmgr.DataTup('b', 'gauge', 3),
+                dmgr.DataTup('b', 'gauge', 4),
+                dmgr.DataTup('b', 'gauge', 9),
             ],
         }
 
@@ -116,8 +116,10 @@ class TestDM(unittest.TestCase):
         self.assertEqual(
             ret,
             [
-                dmg.DataTup('interface.enp0s3.if_packets.rx', 'derive', 605339),
-                dmg.DataTup('interface.enp0s3.if_packets.tx', 'derive', 247494),
+                dmgr.DataTup(
+                    'interface.enp0s3.if_packets.rx', 'derive', 605339),
+                dmgr.DataTup(
+                    'interface.enp0s3.if_packets.tx', 'derive', 247494),
             ],
         )
         self._reset_dm()
@@ -127,7 +129,7 @@ class TestDM(unittest.TestCase):
         self.assertEqual(
             ret,
             [
-                dmg.DataTup('cpu.4.wait', 'derive', 482),
+                dmgr.DataTup('cpu.4.wait', 'derive', 482),
             ],
         )
         self._reset_dm()
@@ -136,7 +138,7 @@ class TestDM(unittest.TestCase):
         self.assertEqual(
             ret,
             [
-                dmg.DataTup('df.boot.df_complex.reserved', 'gauge', 51167232),
+                dmgr.DataTup('df.boot.df_complex.reserved', 'gauge', 51167232),
             ],
         )
         self._reset_dm()

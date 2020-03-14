@@ -3,9 +3,11 @@
 import logging
 import sys
 from argparse import ArgumentParser
-from libgd2pg.flask import APP, flask_init
 from libgd2pg.config import GDConfig
 from libgd2pg.datamanager import dm
+from libgd2pg.db import DB
+from libgd2pg.flask import APP, flask_init
+from libgd2pg.timer import InsTimer
 
 
 def get_args():
@@ -36,10 +38,16 @@ def main():
     config.read(args.config)
 
     # Initialize everything with the config
+    dmgr = dm(config)
+    db = DB(config)
+    timer = InsTimer(dmgr, db)
+    timer.start()
     flask_init(config)
-    dm(config)
 
     APP.run()
+
+    timer.stop()
+    timer.join(3.0)
 
     return 0
 
