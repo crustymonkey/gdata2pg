@@ -172,7 +172,10 @@ class DataManager:
     def _comp_sum(self, data: List[DataTup]) -> Union[float, int]:
         total = 0
         for dtup in data:
-            total += dtup.value
+            if dtup.value is not None:
+                total += dtup.value
+            else:
+                logging.error(f'Invalid None in dtup: {dtup}')
 
         return total
 
@@ -188,7 +191,7 @@ class DataManager:
         """
         Compute the percentile specified and return it
         """
-        return percentile([i.value for i in data], pct)
+        return percentile([i.value for i in data if i.value is not None], pct)
 
 
 #
