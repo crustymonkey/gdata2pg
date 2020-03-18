@@ -184,17 +184,17 @@ class DataManager:
         Sum from the base, aka, use the first metric as the base and
         compute the sum from that
         """
-        total = 0
         min_val = data[0].value
-        # Find the smallest value first
+        max_val = min_val
+        # Find the smallest and largest values to get the difference between
+        # them
         for dtup in data:
             if dtup.value < min_val:
                 min_val = dtup.value
+            if dtup.value > max_val:
+                max_val = dtup.value
 
-        for dtup in data:
-            total += dtup.value - min_val
-
-        return total
+        return max_val - min_val
 
     def _comp_avg(self, data: List[DataTup]) -> Union[float, int]:
         total = self._comp_sum(data)
