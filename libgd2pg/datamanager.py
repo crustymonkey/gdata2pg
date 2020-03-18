@@ -179,6 +179,23 @@ class DataManager:
 
         return total
 
+    def _comp_sumb(self, data: List[DataTup]) -> Union[float, int]:
+        """
+        Sum from the base, aka, use the first metric as the base and
+        compute the sum from that
+        """
+        total = 0
+        min_val = data[0].value
+        # Find the smallest value first
+        for dtup in data:
+            if dtup.value < min_val:
+                min_val = dtup.value
+
+        for dtup in data:
+            total += dtup.value - min_val
+
+        return total
+
     def _comp_avg(self, data: List[DataTup]) -> Union[float, int]:
         total = self._comp_sum(data)
         return total / len(data)

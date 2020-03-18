@@ -1,6 +1,6 @@
 [DEFAULT]
 # Basic rollups
-rollups_derive = sum
+rollups_derive = sumb
 rollups_counter = sum, avg, pct(50), pct(90), pct(95), pct(99)
 rollups_gauge = avg, pct(50), pct(90), pct(95), pct(99)
 
