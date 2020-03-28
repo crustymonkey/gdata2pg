@@ -97,7 +97,7 @@ class DataManager:
         ret = []
         s = StringIO()
         try:
-            s.write('{}'.format(data['plugin']))
+            s.write(data['plugin'])
 
             if data['plugin_instance']:
                 s.write('.{}'.format(data['plugin_instance']))
