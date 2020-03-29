@@ -193,7 +193,7 @@ class TestDM(unittest.TestCase):
 
         ret = dmg._get_comp_metrics(agg_dtups)
         expected = {
-            'a.sum': 8.6,
+            'a.sumb': 3.1,
             'b.avg': 4.25,
             'b.p50': 3.5,
             'b.p90': 7.5,

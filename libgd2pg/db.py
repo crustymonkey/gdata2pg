@@ -1,8 +1,8 @@
 import psycopg2
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from textwrap import dedent
-from typing import Sequence, Dict, TYPE_CHECKING, Optional, Any
+from typing import Sequence, Dict, TYPE_CHECKING, Optional, Any, List, Tuple
 
 
 if TYPE_CHECKING:
@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class DB:
+    DT_TF = '%Y-%m-%d %H:%M:%S'
+
     def __init__(self, config: 'GDConfig'):
         self.config = config
         self.conn = self._get_conn()
@@ -67,6 +69,140 @@ class DB:
             ret = True
 
         return ret
+
+    def do_rollup(
+            self,
+            start_time: datetime,  # Most recent time
+            roll_period: int,
+            end_time: Optional[datetime]=None,  # Further back in time
+            ):
+        # Go all the way back if nothing is specified for end time
+        end_time = datetime(1970, 1, 1) if end_time is None else end_time
+        entity_ids = self._get_entities()
+
+        for eid in entity_ids:
+            key_ids = self._get_keys_for_ent(eid)
+            for kid in key_ids:
+                self._rollup_and_del(
+                    start_time, roll_period, eid, kid, end_time)
+                
+    def _rollup_and_del(
+            self,
+            start_time: datetime,
+            roll_period: int,
+            ent_id: int,
+            key_id: int,
+            end_time: Optional[datetime]=None,
+            ):
+        sel_query = dedent(
+            '''
+            SELECT t.id, t.added, t.value
+            FROM tsd t
+            WHERE
+                entity_id = %s
+                AND key_id = %s
+                AND added > %s
+                AND added < %s
+            ORDER BY added
+            '''
+        )
+
+        ins_query = dedent(
+            '''
+            INSERT INTO tsd (entity_id, key_id, added, value)
+            VALUES (%s, %s, %s, %s)
+            '''
+        )
+
+        del_query = 'DELETE FROM tsd WHERE id in ({})'
+
+        stime = start_time.strftime('%Y-%m-%d %H:%M:%S')
+        etime = end_time.strftime('%Y-%m-%d %H:%M:%S')
+
+        # First, get all the items we need to work on
+        with self.conn.cursor() as curs:
+            curs.execute(sel_query, (ent_id, key_id, etime, stime))
+            to_compress = curs.fetchall()
+        self.conn.commit()
+
+        new_vals = self._compress_vals(to_compress, roll_period)
+        # modify new vals for db insertion
+        new_vals = [(ent_id, key_id, d, v) for d, v in new_vals]
+
+        # We'll do all this in a transaction
+        try:
+            with self.conn.cursor() as curs:
+                # First we'll delete
+                curs.execute(del_query.format(
+                    ', '.join([str(d[0]) for d in to_compress])))
+                # Now we add the new items
+                curs.executemany(ins_query, new_vals)
+        except psycopg2.errors.AdminShutdown:
+            logging.error('The connection has been terminated, reconnecting')
+            self.conn = self._get_conn()
+        except Exception as e:
+            # Log the exception and roll back
+            logging.exception('Failed to insert metrics into the db')
+            self.conn.rollback()
+        else:
+            self.conn.commit()
+
+    def _compress_vals(
+            self,
+            to_compress: List[Tuple[int, str, float]],
+            roll_period: int,
+            ) -> List[Tuple[str, float]]:
+        td = timedelta(seconds=roll_period)
+        ret = []
+
+        cur_dt = to_compress[0][1]
+        last_add = to_compress[0][1]
+        cur_vals = []
+        for row in to_compress:
+            _, added, val = row
+
+            if added - td >= cur_dt:
+                # Need to rollup the vals and reset everything
+                new_val = sum(cur_vals) / len(cur_vals)
+                ret.append((last_add, new_val))
+
+                cur_dt = added
+                cur_vals = [val]
+            else:
+                cur_vals.append(val)
+
+            last_add = added
+
+        if cur_vals:
+            # Add the remainder
+            new_val = sum(cur_vals) / len(cur_vals)
+            ret.append((last_add, new_val))
+
+        return ret
+
+    def _get_entities(self) -> List[int]:
+        query = 'SELECT id FROM entities'
+        with self.conn.cursor() as curs:
+            curs.execute(query)
+            ret = curs.fetchall()
+
+        return [e[0] for e in ret]
+
+    def _get_keys_for_ent(self, ent: int) -> List[int]:
+        query = dedent(
+            '''
+            SELECT DISTINCT k.id from keys k, entities e, tsd t
+            WHERE
+                e.id = %s
+                AND e.id = t.entity_id
+                AND k.id = t.key_id
+            '''
+        )
+        with self.conn.cursor() as curs:
+            curs.execute(query, (ent,))
+            ret = curs.fetchall()
+
+        return [k[0] for k in ret]
 
     def _get_conn(self) -> psycopg2.extensions.connection:
         """
