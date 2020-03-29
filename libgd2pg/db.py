@@ -75,16 +75,17 @@ class DB:
             start_time: datetime,  # Most recent time
             roll_period: int,
             end_time: Optional[datetime]=None,  # Further back in time
+            dry_run: Optional[bool]=False,  # Rollback the changes
             ):
         # Go all the way back if nothing is specified for end time
-        end_time = datetime(1970, 1, 1) if end_time is None else end_time
+        end_time = datetime(1970, 1, 1) if not end_time else end_time
         entity_ids = self._get_entities()
 
         for eid in entity_ids:
             key_ids = self._get_keys_for_ent(eid)
             for kid in key_ids:
                 self._rollup_and_del(
-                    start_time, roll_period, eid, kid, end_time)
+                    start_time, roll_period, eid, kid, end_time, dry_run)
                 
     def _rollup_and_del(
             self,
@@ -92,7 +93,8 @@ class DB:
             roll_period: int,
             ent_id: int,
             key_id: int,
-            end_time: Optional[datetime]=None,
+            end_time: datetime,
+            dry_run: bool,
             ):
         sel_query = dedent(
             '''
@@ -125,6 +127,10 @@ class DB:
             to_compress = curs.fetchall()
         self.conn.commit()
 
+        if not to_compress:
+            # If we have no metrics for the period, return
+            return
+
         new_vals = self._compress_vals(to_compress, roll_period)
         # modify new vals for db insertion
         new_vals = [(ent_id, key_id, d, v) for d, v in new_vals]
@@ -137,6 +143,8 @@ class DB:
                     ', '.join([str(d[0]) for d in to_compress])))
                 # Now we add the new items
                 curs.executemany(ins_query, new_vals)
+                if dry_run:
+                    self.conn.rollback()
         except psycopg2.errors.AdminShutdown:
             logging.error('The connection has been terminated, reconnecting')
             self.conn = self._get_conn()

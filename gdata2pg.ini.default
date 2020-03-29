@@ -14,6 +14,31 @@ db_loc = localhost:5432
 [main]
 # You can override any basic items here, like db connection info
 
+[rollups]
+# You can specify your rollups as pointers to other configs
+rollups = 1_week, 1_month, 3_month
+
+[1_week]
+# Start time is the more recent time and end time is the older time
+# times can be specified using any parsing supplied by `dateparser`
+start_time = 1 week ago
+end_time = 1 month ago
+# rollup_period specifies the time period, in seconds, which to roll the
+# metrics up to
+rollup_period = 300
+
+[1_month]
+start time = 1 month ago
+end_time = 3 months ago
+rollup_period = 1800
+
+[3_month]
+start_time = 3 months ago
+# If your end time is empty, it will use the unix epoch.  Use this
+# as "all older than start_time" setting
+end_time = 
+rollup_period = 3600
+
 [users]
 # This is a map of username to password for HTTP auth
 admin = admin

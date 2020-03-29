@@ -44,3 +44,24 @@ class TestDB(unittest.TestCase):
         ret = self.db._compress_vals(test_data, 300)
 
         self.assertEqual(ret, expected)
+
+        test_data = [
+            (1, dt.strptime('2020-03-20 10:00:00', self.db.DT_TF), 1),
+            (1, dt.strptime('2020-03-20 10:05:00', self.db.DT_TF), 2),
+            (1, dt.strptime('2020-03-20 10:10:00', self.db.DT_TF), 3),
+            (1, dt.strptime('2020-03-20 10:15:00', self.db.DT_TF), 4),
+            (1, dt.strptime('2020-03-20 10:20:00', self.db.DT_TF), 5),
+            (1, dt.strptime('2020-03-20 10:25:00', self.db.DT_TF), 6),
+            
+            (1, dt.strptime('2020-03-20 10:30:00', self.db.DT_TF), 6),
+            (1, dt.strptime('2020-03-20 10:35:00', self.db.DT_TF), 7),
+            (1, dt.strptime('2020-03-20 10:40:00', self.db.DT_TF), 8),
+        ]
+        expected = [
+            (dt.strptime('2020-03-20 10:25:00', self.db.DT_TF), 3.5),
+            (dt.strptime('2020-03-20 10:40:00', self.db.DT_TF), 7.0),
+        ]
+
+        ret = self.db._compress_vals(test_data, 1800)
+
+        self.assertEqual(ret, expected)
