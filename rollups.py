@@ -32,8 +32,7 @@ def setup_logging(args):
     )
 
 
-def do_rollups(conf, args):
-    db = DB(conf)
+def do_rollups(db, conf, args):
     for roll in conf['rollups'].getlist('rollups'):
         start = dparse(conf[roll]['start_time'])
         end = conf[roll]['end_time']
@@ -50,7 +49,12 @@ def main():
     conf = GDConfig()
     conf.read(args.config)
 
-    do_rollups(conf, args)
+    db = DB(conf)
+    do_rollups(db, conf, args)
+
+    # Now, try and cleanup disk space
+    logging.debug('Vacuuming DB table: tsd')
+    db.vacuum('tsd')
 
     return 0
 

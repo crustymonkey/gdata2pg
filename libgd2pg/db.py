@@ -70,6 +70,27 @@ class DB:
 
         return ret
 
+    def vacuum(self, table: Optional[str]='') -> bool:
+        """
+        Do a cleanup of the db to reclaim space, optionally supplying a table
+        """
+        ret = True
+        query = 'VACUUM FULL %s'
+        try:
+            with self.conn.cursor() as curs:
+                curs.execute(query, (table,))
+            self.conn.commit()
+        except psycopg2.errors.AdminShutdown:
+            logging.error('The connection has been terminated, reconnecting')
+            self.conn = self._get_conn()
+            ret = False
+        except Exception as e:
+            # Log the exception and roll back
+            logging.exception('Failed to vacuum table: {}'.format(table))
+            ret = False
+
+        return ret
+
     def do_rollup(
             self,
             start_time: datetime,  # Most recent time
@@ -77,6 +98,9 @@ class DB:
             end_time: Optional[datetime]=None,  # Further back in time
             dry_run: Optional[bool]=False,  # Rollback the changes
             ):
+        """
+        This will do a rollup for a time period and an aggregation period
+        """
         # Go all the way back if nothing is specified for end time
         end_time = datetime(1970, 1, 1) if not end_time else end_time
         entity_ids = self._get_entities()
