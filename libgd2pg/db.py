@@ -106,8 +106,10 @@ class DB:
         entity_ids = self._get_entities()
 
         for eid in entity_ids:
+            logging.debug('Running rollups for ent id: {}'.format(eid))
             key_ids = self._get_keys_for_ent(eid)
             for kid in key_ids:
+                logging.debug('Running rollups for key id: {}'.format(kid))
                 self._rollup_and_del(
                     start_time, roll_period, eid, kid, end_time, dry_run)
                 
