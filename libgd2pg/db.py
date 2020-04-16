@@ -75,10 +75,10 @@ class DB:
         Do a cleanup of the db to reclaim space, optionally supplying a table
         """
         ret = True
-        query = 'VACUUM FULL %s'
+        query = f'VACUUM FULL {table}'
         try:
             with self.conn.cursor() as curs:
-                curs.execute(query, (table,))
+                curs.execute(query)
             self.conn.commit()
         except psycopg2.errors.AdminShutdown:
             logging.error('The connection has been terminated, reconnecting')
