@@ -56,7 +56,13 @@ class DB:
             with self.conn.cursor() as curs:
                 for entity, keys in metrics.items():
                     for key, val in keys.items():
-                        curs.execute(query, (entity, key, dt_str, val))
+                        if val is not None:
+                            curs.execute(query, (entity, key, dt_str, val))
+                        else:
+                            logging.warn(
+                                f'Found an invalid value for {entity}::{key}, '
+                                'not inserting into db'
+                            )
         except psycopg2.errors.AdminShutdown:
             logging.error('The connection has been terminated, reconnecting')
             self.conn = self._get_conn()

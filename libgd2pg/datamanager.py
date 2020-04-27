@@ -115,8 +115,9 @@ class DataManager:
                         metric_name, data['dstypes'][i], data['values'][i]))
                 else:
                     tmp = '{}.{}'.format(metric_name, dsn)
-                    ret.append(DataTup(
-                        tmp, data['dstypes'][i], data['values'][i]))
+                    if data['values'][i] is not None:
+                        ret.append(DataTup(
+                            tmp, data['dstypes'][i], data['values'][i]))
         except Exception:
             logging.error('Invalid data object for metric name')
             logging.debug('DATA: {}'.format(data))
@@ -208,7 +209,10 @@ class DataManager:
         """
         Compute the percentile specified and return it
         """
-        return percentile([i.value for i in data if i.value is not None], pct)
+        vals = [i.value for i in data if i.value is not None]
+        if not vals:
+            return None
+        return percentile(vals, pct)
 
 
 #

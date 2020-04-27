@@ -39,10 +39,19 @@ class InsTimer(Thread):
 
     def _do_work(self) -> None:
         logging.debug('Doing work')
-        metrics = self.dm.get_metrics_reset()
+        metrics = None
+        res = None
+        try:
+            metrics = self.dm.get_metrics_reset()
+        except Exception as e:
+            logging.exception('Error getting metrics')
 
-        logging.debug(f'Got metrics: {metrics}')
-        res = self.db.insert_metrics(metrics)
+        if metrics:
+            logging.debug(f'Got metrics: {metrics}')
+            try:
+                res = self.db.insert_metrics(metrics)
+            except Exception as e:
+                logging.exception('Error inserting metrics into db')
 
         logging.debug(f'Insert result: {res}')
 
