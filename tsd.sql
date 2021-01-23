@@ -46,7 +46,7 @@ END
 $etest$ LANGUAGE plpgsql;
 
 DROP FUNCTION IF EXISTS keys_by_ent(varchar);
-CREATE OR REPLACE FUNCTION keys_by_ent(ent varchar(1024)) RETURNS TABLE(varchar(1024)) AS $etest$
+CREATE OR REPLACE FUNCTION keys_by_ent(ent varchar(1024)) RETURNS TABLE(keys varchar(1024)) AS $etest$
 BEGIN
     RETURN QUERY
     SELECT DISTINCT k.key FROM keys k, entities e, tsd t 
@@ -54,6 +54,7 @@ BEGIN
         e.entity = ent
         AND e.id = t.entity_id
         AND k.id = t.key_id
+        AND added > NOW() - interval '30 minutes'
     ORDER BY k.key;
 END
 $etest$ LANGUAGE plpgsql;
