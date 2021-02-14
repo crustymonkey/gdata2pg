@@ -59,6 +59,16 @@ BEGIN
 END
 $etest$ LANGUAGE plpgsql;
 
+DROP FUNCTION IF EXISTS histokey(varchar);
+CREATE OR REPLACE FUNCTION histokey(key varchar(1024)) RETURNS varchar(1024) AS $BODY$
+DECLARE
+    matches text[];
+BEGIN
+    matches := regexp_match(key, 'histogram\.([\d\.]+)\.to\.([\d\.]+)\.[a-z]');
+    return CONCAT(matches[1], '-', matches[2]);
+END
+$BODY$ LANGUAGE plpgsql;
+
 DROP TRIGGER IF EXISTS tsd_ts_upd on tsd;
 CREATE TRIGGER tsd_ts_upd AFTER INSERT ON tsd
     FOR EACH ROW EXECUTE PROCEDURE upd_added();
