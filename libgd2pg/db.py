@@ -138,12 +138,23 @@ class DB:
         # Go all the way back if nothing is specified for end time
         end_time = datetime(1970, 1, 1) if not end_time else end_time
         entity_ids = self._get_entities()
-
+        
+        total_rollups = 0
+        count = 0
         for eid in entity_ids:
             logging.debug('Running rollups for ent id: {}'.format(eid))
             key_ids = self._get_keys_for_ent(eid)
+            if not total_rollups:
+                total_rollups = len(entity_ids) * len(key_ids)
             for kid in key_ids:
-                logging.debug('Running rollups for key id: {}'.format(kid))
+                count += 1
+                perc = (count / total_rollups) * 100
+                logging.debug(
+                    'Running rollups for key id: {}; {:.01}% complete'.format(
+                        kid,
+                        perc,
+                    )
+                )
                 self._rollup_and_del(
                     start_time, roll_period, eid, kid, end_time, dry_run)
                 
