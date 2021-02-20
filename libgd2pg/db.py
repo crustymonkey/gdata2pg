@@ -24,6 +24,34 @@ class DB:
             except Exception:
                 pass
 
+    def query(
+            self,
+            query: str,
+            args: Tuple[str],
+            dry_run: Optional[bool]=False,
+            ) -> bool:
+        ret = False
+        if args.dry_run:
+            logging.info('Would have run {query} with {args}')
+            return True
+
+        try:
+            with self.conn.cursor() as curs:
+                curs.execute(query, args)
+        except psycopg2.errors.AdminShutdown:
+            logging.error('The connection has been terminated, reconnecting')
+            self.conn = self._get_conn()
+            return self.query(query)
+        except Exception as e:
+            # Log the exception and roll back
+            logging.exception('Failed to insert metrics into the db')
+            self.conn.rollback()
+        else:
+            self.conn.commit()
+            ret = True
+
+        return ret
+
     def insert_metrics(
             self,
             metrics: Dict[str, Dict[str, Any]],
