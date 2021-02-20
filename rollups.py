@@ -15,6 +15,7 @@ INDEXES = (
     'CREATE INDEX ON {table} (added)',
     'CREATE INDEX ON {table} (entity_id)',
     'CREATE INDEX ON {table} (key_id)',
+    'CREATE INDEX ON {table} (id)',
 )
 
 
