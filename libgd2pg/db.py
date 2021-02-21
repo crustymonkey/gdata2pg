@@ -27,13 +27,16 @@ class DB:
     def query(
             self,
             query: str,
-            args: Tuple[str],
-            dry_run: Optional[bool]=False,
-            ) -> bool:
+            args: Tuple[str]=None,
+            dry_run: Optional[bool]=False) -> bool:
         ret = False
-        if args.dry_run:
-            logging.info('Would have run {query} with {args}')
+        if args is None:
+            args = tuple()
+
+        if dry_run:
+            logging.info(f'Would have run: {query} with {args}')
             return True
+
 
         try:
             with self.conn.cursor() as curs:
@@ -56,8 +59,7 @@ class DB:
             self,
             metrics: Dict[str, Dict[str, Any]],
             dt: Optional[datetime]=None,
-            minute_mark: Optional[bool]=True,
-            ) -> bool:
+            minute_mark: Optional[bool]=True) -> bool:
         """
         This will insert the metrics for the specified timestamp.  If
         timestamp is not specified, the current timestamp will be used.
@@ -104,16 +106,28 @@ class DB:
 
         return ret
 
-    def vacuum(self, table: Optional[str]='') -> bool:
+    def vacuum(
+            self,
+            table: Optional[str]='',
+            dry_run: Optional[bool]=False) -> bool:
         """
         Do a cleanup of the db to reclaim space, optionally supplying a table
         """
         ret = True
-        query = f'VACUUM FULL {table}'
+        query = 'VACUUM FULL'
+        if table:
+            query = f'{query} {table}'
+
+        if dry_run:
+            logging.info(f'Would have run: {query}')
+            return ret
+
+        cur_isolation = self.conn.isolation_level
+
         try:
-            with self.conn.cursor() as curs:
-                curs.execute(query)
-            self.conn.commit()
+            self.conn.set_isolation_level(0)
+            curs = self.conn.cursor()
+            curs.execute(query)
         except psycopg2.errors.AdminShutdown:
             logging.error('The connection has been terminated, reconnecting')
             self.conn = self._get_conn()
@@ -122,6 +136,8 @@ class DB:
             # Log the exception and roll back
             logging.exception('Failed to vacuum table: {}'.format(table))
             ret = False
+        finally:
+            self.conn.set_isolation_level(cur_isolation)
 
         return ret
 
@@ -165,8 +181,7 @@ class DB:
             ent_id: int,
             key_id: int,
             end_time: datetime,
-            dry_run: bool,
-            ):
+            dry_run: bool):
         sel_query = dedent(
             '''
             SELECT t.id, t.added, t.value
@@ -229,8 +244,7 @@ class DB:
     def _compress_vals(
             self,
             to_compress: List[Tuple[int, str, float]],
-            roll_period: int,
-            ) -> List[Tuple[str, float]]:
+            roll_period: int) -> List[Tuple[str, float]]:
         td = timedelta(seconds=roll_period)
         ret = []
 

@@ -12,10 +12,10 @@ from libgd2pg.config import GDConfig
 
 PART_TPL = '{table}_{year}{month}'
 INDEXES = (
-    'CREATE INDEX ON {table} (added)',
-    'CREATE INDEX ON {table} (entity_id)',
-    'CREATE INDEX ON {table} (key_id)',
-    'CREATE INDEX ON {table} (id)',
+    'CREATE INDEX tsd_202103_added_idx ON {table} (added)',
+    'CREATE INDEX tsd_202103_entity_id_idx ON {table} (entity_id)',
+    'CREATE INDEX tsd_202103_key_id_idx ON {table} (key_id)',
+    'CREATE INDEX tsd_202103_id_idx ON {table} (id)',
 )
 
 
@@ -57,8 +57,13 @@ def do_rollups(db, conf, args):
 
 def do_partition(db, conf, args):
     gm = time.gmtime()
-    if gm.tm_mday != 21:
-        # Only create next month's partition on the 25th of the month
+    if gm.tm_mday > 7:
+        # Only create next month's partition during the first week of a 
+        # new month
+        logging.debug(
+            'New partitions are only created during the first '
+            'week of a month'
+        )
         return
 
     new_d = date.today() + timedelta(days=32)
@@ -79,8 +84,8 @@ def do_partition(db, conf, args):
             (start, end),
             args.dry_run):
         for idx in INDEXES:
-            index = idx.format(part, dry_run=args.dry_run)
-            if not db.query(index):
+            index = idx.format(table=part)
+            if not db.query(index, dry_run=args.dry_run):
                 logging.error(f'Failed to create index: {index}')
     else:
         logging.error(f'Failed to create partition: {part}')
@@ -99,8 +104,7 @@ def main():
         do_partition(db, conf, args)
 
     # Now, try and cleanup disk space
-    logging.debug('Vacuuming DB table: tsd')
-    db.vacuum('tsd')
+    db.vacuum(dry_run=args.dry_run)
 
     return 0
 
