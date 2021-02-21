@@ -12,10 +12,10 @@ from libgd2pg.config import GDConfig
 
 PART_TPL = '{table}_{year}{month}'
 INDEXES = (
-    'CREATE INDEX tsd_202103_added_idx ON {table} (added)',
-    'CREATE INDEX tsd_202103_entity_id_idx ON {table} (entity_id)',
-    'CREATE INDEX tsd_202103_key_id_idx ON {table} (key_id)',
-    'CREATE INDEX tsd_202103_id_idx ON {table} (id)',
+    'CREATE INDEX IF NOT EXISTS tsd_202103_added_idx ON {table} (added)',
+    'CREATE INDEX IF NOT EXISTS tsd_202103_entity_id_idx ON {table} (entity_id)',
+    'CREATE INDEX IF NOT EXISTS tsd_202103_key_id_idx ON {table} (key_id)',
+    'CREATE INDEX IF NOT EXISTS tsd_202103_id_idx ON {table} (id)',
 )
 
 
