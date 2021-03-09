@@ -60,18 +60,22 @@ class DataManager:
         """
         ret = {}
         self.LOCK.acquire()
-        for ent, data in self.ent_map.items():
-            # First we have the get the "compiled" metric name/type/value
-            # DataTups to create an intermediate dictionary that we can use
-            # to compute the aggregated data points
-            agg_dtups = self._get_agg_dtups(data)
-            
-            # Now we need to get the computed metrics for the data
-            comp_metrics = self._get_comp_metrics(agg_dtups)
+        try:
+            for ent, data in self.ent_map.items():
+                # First we have the get the "compiled" metric name/type/value
+                # DataTups to create an intermediate dictionary that we can use
+                # to compute the aggregated data points
+                agg_dtups = self._get_agg_dtups(data)
+                
+                # Now we need to get the computed metrics for the data
+                comp_metrics = self._get_comp_metrics(agg_dtups)
 
-            # And finally, we attach that dictionary to our ent
-            ret[ent] = comp_metrics
-        self.LOCK.release()
+                # And finally, we attach that dictionary to our ent
+                ret[ent] = comp_metrics
+        except Exception as e:
+            logging.error(f'Failure in get_metrics in the datamanager: {e}')
+        finally:
+            self.LOCK.release()
 
         return ret
 
