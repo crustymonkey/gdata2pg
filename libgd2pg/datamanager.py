@@ -83,10 +83,15 @@ class DataManager:
         """
         This will get the metrics and reset the internal ent map
         """
+        metrics = None
         self.LOCK.acquire()
-        metrics = self.get_metrics()
-        self.ent_map = self._init_map()
-        self.LOCK.release()
+        try:
+            metrics = self.get_metrics()
+            self.ent_map = self._init_map()
+        except Exception:
+            logging.exception('Failed to get metrics')
+        finally:
+            self.LOCK.release()
 
         return metrics
 
