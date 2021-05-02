@@ -38,6 +38,7 @@ class DB:
             return True
 
 
+        logging.debug(f'Running arbitrary query: {query}')
         try:
             with self.conn.cursor() as curs:
                 curs.execute(query, args)
@@ -52,6 +53,8 @@ class DB:
         else:
             self.conn.commit()
             ret = True
+
+        logging.debug('Arbitrary query finished')
 
         return ret
 
@@ -82,6 +85,7 @@ class DB:
             (ent_id(%s), key_id(%s), %s, %s);
             ''').strip()
 
+        logging.debug('Starting INSERT query')
         try:
             with self.conn.cursor() as curs:
                 for entity, keys in metrics.items():
@@ -103,6 +107,8 @@ class DB:
         else:
             self.conn.commit()
             ret = True
+
+        logging.debug('INSERT query finished')
 
         return ret
 

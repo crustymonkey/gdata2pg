@@ -59,6 +59,7 @@ class DataManager:
         This will roll up and return the aggregated metrics
         """
         ret = {}
+        logging.debug('get_metrics() call started')
         self.LOCK.acquire()
         try:
             for ent, data in self.ent_map.items():
@@ -76,6 +77,7 @@ class DataManager:
             logging.error(f'Failure in get_metrics in the datamanager: {e}')
         finally:
             self.LOCK.release()
+        logging.debug('get_metrics() call finished')
 
         return ret
 
@@ -84,6 +86,7 @@ class DataManager:
         This will get the metrics and reset the internal ent map
         """
         metrics = None
+        logging.debug('get_metrics_reset() call started')
         self.LOCK.acquire()
         try:
             metrics = self.get_metrics()
@@ -92,6 +95,7 @@ class DataManager:
             logging.exception('Failed to get metrics')
         finally:
             self.LOCK.release()
+        logging.debug('get_metrics_reset() call finished')
 
         return metrics
 

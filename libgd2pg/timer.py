@@ -47,7 +47,6 @@ class InsTimer(Thread):
             logging.exception('Error getting metrics')
 
         if metrics:
-            logging.debug(f'Got metrics: {metrics}')
             try:
                 res = self.db.insert_metrics(metrics)
             except Exception as e:
@@ -58,7 +57,6 @@ class InsTimer(Thread):
         if self._stop_ev.is_set():
             logging.info('Work completed, closing thread')
         else:
-            logging.debug('Starting the timer again')
             self._start_timer_and_do_work()
 
     def _get_next_min_diff(self) -> float:
