@@ -1,5 +1,6 @@
 import psycopg2
 import logging
+import time
 from datetime import datetime, timedelta
 from textwrap import dedent
 from typing import Sequence, Dict, TYPE_CHECKING, Optional, Any, List, Tuple
@@ -86,6 +87,7 @@ class DB:
             ''').strip()
 
         logging.debug('Starting INSERT query')
+        start = time.time()
         try:
             with self.conn.cursor() as curs:
                 for entity, keys in metrics.items():
@@ -108,7 +110,8 @@ class DB:
             self.conn.commit()
             ret = True
 
-        logging.debug('INSERT query finished')
+        itime = time.time() - start
+        logging.debug(f'INSERT query finished in {itime:.02f}')
 
         return ret
 
