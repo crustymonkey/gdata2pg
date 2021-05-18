@@ -118,12 +118,13 @@ class DB:
     def vacuum(
             self,
             table: Optional[str]='',
-            dry_run: Optional[bool]=False) -> bool:
+            dry_run: Optional[bool]=False
+            full: Optional[bool]=False) -> bool:
         """
         Do a cleanup of the db to reclaim space, optionally supplying a table
         """
         ret = True
-        query = 'VACUUM FULL'
+        query = 'VACUUM {}ANALYZE'.format('FULL ' if full else '')
         if table:
             query = f'{query} {table}'
 
