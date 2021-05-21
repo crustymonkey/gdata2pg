@@ -118,7 +118,7 @@ class DB:
     def vacuum(
             self,
             table: Optional[str]='',
-            dry_run: Optional[bool]=False
+            dry_run: Optional[bool]=False,
             full: Optional[bool]=False) -> bool:
         """
         Do a cleanup of the db to reclaim space, optionally supplying a table
