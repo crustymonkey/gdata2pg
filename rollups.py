@@ -58,7 +58,7 @@ def do_rollups(db, conf, args):
 def do_partition(db, conf, args):
     gm = time.gmtime()
     if gm.tm_mday > 7:
-        # Only create next month's partition during the first week of a 
+        # Only create next month's partition during the first week of a
         # new month
         logging.debug(
             'New partitions are only created during the first '
@@ -73,7 +73,7 @@ def do_partition(db, conf, args):
         year=new_d.year,
         month=f'{new_d.month:02d}',
     )
-    
+
     start = f'{new_d.year}-{new_d.month:02d}-01'
     end_d = new_d + timedelta(days=32)
     end = f'{end_d.year}-{end_d.month:02d}-01'
@@ -99,12 +99,12 @@ def main():
 
     db = DB(conf)
     do_rollups(db, conf, args)
-    
+
     if args.also_partition:
         do_partition(db, conf, args)
 
     # Now, try and cleanup disk space
-    db.vacuum(dry_run=args.dry_run)
+    db.vacuum(dry_run=args.dry_run, full=True)
 
     return 0
 
