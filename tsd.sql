@@ -1,17 +1,17 @@
 CREATE TABLE IF NOT EXISTS entities (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     entity VARCHAR(1024) UNIQUE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS keys (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     key VARCHAR(1024) UNIQUE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS tsd (
     id BIGSERIAL PRIMARY KEY,
-    entity_id INTEGER REFERENCES entities(id),
-    key_id INTEGER REFERENCES keys(id),
+    entity_id BIGINT REFERENCES entities(id),
+    key_id BIGINT REFERENCES keys(id),
     added TIMESTAMP,
     value DOUBLE PRECISION NOT NULL
 );
@@ -30,7 +30,7 @@ END;
 $ex_tbl$ LANGUAGE plpgsql;
 
 DROP FUNCTION IF EXISTS key_id(varchar);
-CREATE OR REPLACE FUNCTION key_id(new_key varchar(1024)) RETURNS INT AS $test$
+CREATE OR REPLACE FUNCTION key_id(new_key varchar(1024)) RETURNS BIGINT AS $test$
 BEGIN
     INSERT INTO keys (key) VALUES (new_key) ON CONFLICT DO NOTHING;
     RETURN (SELECT id from keys where key = new_key);
@@ -38,7 +38,7 @@ END
 $test$ LANGUAGE plpgsql;
 
 DROP FUNCTION IF EXISTS ent_id(varchar);
-CREATE OR REPLACE FUNCTION ent_id(new_ent varchar(1024)) RETURNS INT AS $etest$
+CREATE OR REPLACE FUNCTION ent_id(new_ent varchar(1024)) RETURNS BIGINT AS $etest$
 BEGIN
     INSERT INTO entities (entity) VALUES (new_ent) ON CONFLICT DO NOTHING;
     RETURN (SELECT id from entities where entity = new_ent);

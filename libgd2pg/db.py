@@ -93,6 +93,8 @@ class DB:
                 for entity, keys in metrics.items():
                     for key, val in keys.items():
                         if val is not None:
+                            logging.debug(f'Running insert with {entity} '
+                                f'{key} {dt_str} {val}')
                             curs.execute(query, (entity, key, dt_str, val))
                         else:
                             logging.warn(
