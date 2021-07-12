@@ -61,8 +61,8 @@ class DataManager:
         ret = {}
         logging.debug('get_metrics() call started')
         self.LOCK.acquire()
-        try:
-            for ent, data in self.ent_map.items():
+        for ent, data in self.ent_map.items():
+            try:
                 # First we have the get the "compiled" metric name/type/value
                 # DataTups to create an intermediate dictionary that we can use
                 # to compute the aggregated data points
@@ -73,10 +73,9 @@ class DataManager:
 
                 # And finally, we attach that dictionary to our ent
                 ret[ent] = comp_metrics
-        except Exception as e:
-            logging.error(f'Failure in get_metrics in the datamanager: {e}')
-        finally:
-            self.LOCK.release()
+            except Exception as e:
+                logging.error(f'Failure in get_metrics in the datamanager: {e}')
+        self.LOCK.release()
         logging.debug('get_metrics() call finished')
 
         return ret

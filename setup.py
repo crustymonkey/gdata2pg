@@ -10,7 +10,7 @@ def get_requirements():
 
 setup(
     name='gdata2pg',
-    version='0.1.1',
+    version='0.1.2',
     author='Jay Deiman',
     author_email='admin@splitstreams.com',
     description=(
