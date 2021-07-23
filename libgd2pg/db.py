@@ -169,7 +169,7 @@ class DB:
         # Go all the way back if nothing is specified for end time
         end_time = datetime(1970, 1, 1) if not end_time else end_time
         entity_ids = self._get_entities()
-        
+
         total_rollups = 0
         count = 0
         for eid in entity_ids:
@@ -188,7 +188,27 @@ class DB:
                 )
                 self._rollup_and_del(
                     start_time, roll_period, eid, kid, end_time, dry_run)
-                
+
+    def mv_table_to_tblspace(self, table, tablespace, dry_run=False):
+        """
+        Move the specified table to a different tablespace
+        """
+        mv_query = 'ALTER TABLE %s SET TABLESPACE %s'
+        try:
+            with self.conn.cursor() as curs:
+                curs.execute(mv_query, (table, tablespace))
+                if dry_run:
+                    self.conn.rollback()
+        except psycopg2.errors.AdminShutdown:
+            logging.error('The connection has been terminated, reconnecting')
+            self.conn = self._get_conn()
+        except Exception as e:
+            # Log the exception and roll back
+            logging.exception(f'Failed to move {table} to {tablespace}: {e}')
+            self.conn.rollback()
+        else:
+            self.conn.commit()
+
     def _rollup_and_del(
             self,
             start_time: datetime,

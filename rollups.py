@@ -91,6 +91,26 @@ def do_partition(db, conf, args):
         logging.error(f'Failed to create partition: {part}')
 
 
+def get_prev_m() -> datetime:
+    """
+    Return a datetime object for now minus 30 days
+    """
+    return datetime.now() - timedelta(days=30)
+
+
+def do_tablespace_rollup(db, conf, args):
+    dest_tplspc = conf.get('tablespace', 'dest_tblspc')
+    patterns = conf.getlist('tablespace', 'move_patterns')
+
+    prev_m = get_prev_m()
+    year = prev_m.year
+    month = f'{prev_m.month:02d}'
+    for pattern in patterns:
+        tbl = pattern.format(year=year, month=month)
+        logging.debug(f'Moving {tbl} to {dest_tblspc}')
+        db.mv_table_to_tblspace(tbl, dest_tblspc, args.dry_run)
+
+
 def main():
     args = get_args()
     setup_logging(args)

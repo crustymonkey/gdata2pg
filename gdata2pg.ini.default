@@ -42,3 +42,10 @@ rollup_period = 3600
 [users]
 # This is a map of username to password for HTTP auth
 admin = admin
+
+[tablespace]
+dest_tblspc = files_space
+# These define the tables to move to the dest_tblspc.  The rollups script will
+# move tables matching these patterns.  You can specify multiple, separated
+# by commas
+move_patterns = tsd_{year}{month}
