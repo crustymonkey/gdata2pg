@@ -28,6 +28,11 @@ def get_args():
     p.add_argument('-d', '--dry-run', default=False, action='store_true',
         help='Don\'t actually commit the changes (roll back the trans.) '
         '[default: %(default)s]')
+    p.add_argument('-t', '--also-tablespace', default=False,
+        action='store_true', help='Also move items between tablespaces '
+        '[default: %(default)s]')
+    p.add_argument('-f', '--vacuum-full', default=False, action='store_true',
+        help='Do a full vacuum after rollups [default: %(default)s]')
     p.add_argument('-D', '--debug', action='store_true', default=False,
         help='Add debug output [default: %(default)s]')
 
@@ -99,7 +104,7 @@ def get_prev_m() -> datetime:
 
 
 def do_tablespace_rollup(db, conf, args):
-    dest_tplspc = conf.get('tablespace', 'dest_tblspc')
+    dest_tblspc = conf.get('tablespace', 'dest_tblspc')
     patterns = conf.getlist('tablespace', 'move_patterns')
 
     prev_m = get_prev_m()
@@ -118,14 +123,16 @@ def main():
     conf.read(args.config)
 
     db = DB(conf)
+    if args.also_tablespace:
+        do_tablespace_rollup(db, conf, args)
+
     do_rollups(db, conf, args)
 
     if args.also_partition:
         do_partition(db, conf, args)
 
     # Now, try and cleanup disk space
-    db.vacuum(dry_run=args.dry_run, full=True)
-
+    db.vacuum(dry_run=args.dry_run, full=args.vacuum_full)
     return 0
 
 

@@ -190,10 +190,10 @@ class DB:
         """
         Move the specified table to a different tablespace
         """
-        mv_query = 'ALTER TABLE %s SET TABLESPACE %s'
+        mv_query = f'ALTER TABLE {table} SET TABLESPACE {tablespace}'
         try:
             with self.conn.cursor() as curs:
-                curs.execute(mv_query, (table, tablespace))
+                curs.execute(mv_query)
                 if dry_run:
                     self.conn.rollback()
         except psycopg2.errors.AdminShutdown:
