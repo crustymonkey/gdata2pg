@@ -104,9 +104,12 @@ class DB:
         except psycopg2.errors.AdminShutdown:
             logging.error('The connection has been terminated, reconnecting')
             self.conn = self._get_conn()
+        except psycopg2.InterfaceError as e:
+            logging.error(f'Interface error, reconnecting: {e}')
+            self.conn = self._get_conn()
         except Exception as e:
             # Log the exception and roll back
-            logging.exception('Failed to insert metrics into the db')
+            logging.exception(f'Failed to insert metrics into the db: {e}')
             self.conn.rollback()
         else:
             self.conn.commit()
