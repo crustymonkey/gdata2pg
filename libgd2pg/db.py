@@ -181,7 +181,7 @@ class DB:
                 count += 1
                 perc = (count / total_rollups) * 100
                 logging.debug(
-                    'Running rollups for key id: {}; {:.01}% complete'.format(
+                    'Running rollups for key id: {}; {:.01f}% complete'.format(
                         kid,
                         perc,
                     )
