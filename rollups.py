@@ -11,11 +11,32 @@ from libgd2pg.config import GDConfig
 
 
 PART_TPL = '{table}_{year}{month}'
-INDEXES = (
+TSD_INDEXES = (
     'CREATE INDEX IF NOT EXISTS {table}_added_idx ON {table} (added)',
     'CREATE INDEX IF NOT EXISTS {table}_entity_id_idx ON {table} (entity_id)',
     'CREATE INDEX IF NOT EXISTS {table}_key_id_idx ON {table} (key_id)',
     'CREATE INDEX IF NOT EXISTS {table}_id_idx ON {table} (id)',
+)
+WEBLOGS_INDEXES = (
+    'CREATE INDEX IF NOT EXISTS {table}_asn_idx ON {table} (asn)',
+    'CREATE INDEX IF NOT EXISTS {table}_aso_idx ON {table} (aso)',
+    'CREATE INDEX IF NOT EXISTS {table}_city_idx ON {table} (city)',
+    'CREATE INDEX IF NOT EXISTS {table}_country_idx ON {table} (country)',
+    'CREATE INDEX IF NOT EXISTS {table}_country_iso_code_idx ON {table} (country_iso_code)',
+    'CREATE INDEX IF NOT EXISTS {table}_dt_idx ON {table} (dt)',
+    'CREATE INDEX IF NOT EXISTS {table}_host_idx ON {table} (host)',
+    'CREATE INDEX IF NOT EXISTS {table}_id_idx ON {table} (id)',
+    'CREATE INDEX IF NOT EXISTS {table}_ip_idx ON {table} (ip)',
+    'CREATE INDEX IF NOT EXISTS {table}_network_idx ON {table} (network)',
+    'CREATE INDEX IF NOT EXISTS {table}_referer_idx ON {table} (referer)',
+    'CREATE INDEX IF NOT EXISTS {table}_req_http_vers_idx ON {table} (req_http_vers)',
+    'CREATE INDEX IF NOT EXISTS {table}_req_type_idx ON {table} (req_type)',
+    'CREATE INDEX IF NOT EXISTS {table}_req_uri_idx ON {table} (req_uri)',
+    'CREATE INDEX IF NOT EXISTS {table}_request_idx ON {table} (request)',
+    'CREATE INDEX IF NOT EXISTS {table}_site_idx ON {table} (site)',
+    'CREATE INDEX IF NOT EXISTS {table}_state_idx ON {table} (state)',
+    'CREATE INDEX IF NOT EXISTS {table}_status_idx ON {table} (status)',
+    'CREATE INDEX IF NOT EXISTS {table}_ua_idx ON {table} (ua)',
 )
 
 
@@ -60,7 +81,7 @@ def do_rollups(db, conf, args):
         db.do_rollup(start, period, end, args.dry_run)
 
 
-def do_partition(db, conf, args):
+def do_partition(base_tbl, db, conf, args):
     gm = time.gmtime()
     if gm.tm_mday > 7:
         # Only create next month's partition during the first week of a
@@ -74,7 +95,7 @@ def do_partition(db, conf, args):
     new_d = date.today() + timedelta(days=32)
     # Create next month's partition
     part = PART_TPL.format(
-        table='tsd',
+        table=base_tbl,
         year=new_d.year,
         month=f'{new_d.month:02d}',
     )
@@ -82,13 +103,15 @@ def do_partition(db, conf, args):
     start = f'{new_d.year}-{new_d.month:02d}-01'
     end_d = new_d + timedelta(days=32)
     end = f'{end_d.year}-{end_d.month:02d}-01'
+    indexes = TSD_INDEXES if base_tbl == 'tsd' else WEBLOGS_INDEXES
 
+    logging.debug(f'Creating a new partition for "{base_tbl}" -> {part}')
     if db.query(
-            f'CREATE TABLE IF NOT EXISTS {part} PARTITION OF tsd '
+            f'CREATE TABLE IF NOT EXISTS {part} PARTITION OF {base_tbl} '
             'FOR VALUES FROM (%s) to (%s)',
             (start, end),
             args.dry_run):
-        for idx in INDEXES:
+        for idx in indexes:
             index = idx.format(table=part)
             if not db.query(index, dry_run=args.dry_run):
                 logging.error(f'Failed to create index: {index}')
@@ -129,7 +152,8 @@ def main():
     do_rollups(db, conf, args)
 
     if args.also_partition:
-        do_partition(db, conf, args)
+        do_partition('tsd', db, conf, args)
+        do_partition('weblogs', db, conf, args)
 
     # Now, try and cleanup disk space
     db.vacuum(dry_run=args.dry_run, full=args.vacuum_full)
