@@ -54,6 +54,8 @@ def get_args():
         '[default: %(default)s]')
     p.add_argument('-f', '--vacuum-full', default=False, action='store_true',
         help='Do a full vacuum after rollups [default: %(default)s]')
+    p.add_argument('-v', '--vacuum-time', default='9:00:00',
+        help='Sleep until this time to run the vacuum [default: %(default)s]')
     p.add_argument('-D', '--debug', action='store_true', default=False,
         help='Add debug output [default: %(default)s]')
 
@@ -139,6 +141,33 @@ def do_tablespace_rollup(db, conf, args):
         db.mv_table_to_tblspace(tbl, dest_tblspc, args.dry_run)
 
 
+def parse_time(t):
+    """
+    parse a time string in the format of "H:M:S" and return a tuple of
+    ints in the same order
+    """
+    return tuple([int(i) for i in t.split(':')])
+
+
+def run_vacuum(db, args):
+    # Need to get the time differential for the sleep
+    now = datetime.now()
+    hour, minute, sec = parse_time(args.vacuum_time)
+    run_time = now.replace(hour=hour, minute=minute, second=sec)
+
+    if run_time - now < timedelta(seconds=2):
+        # We have a time in the past, add 1 day
+        run_time += timedelta(days=1)
+
+    delta = run_time - now
+    delta_secs = delta.total_seconds()
+
+    logging.info(f'Sleeping for {delta_secs} before running VACUUM')
+    time.sleep(delta_secs)
+
+    db.vacuum(dry_run=args.dry_run, full=args.vacuum_full)
+
+
 def main():
     args = get_args()
     setup_logging(args)
@@ -156,7 +185,8 @@ def main():
         do_partition('weblogs', db, conf, args)
 
     # Now, try and cleanup disk space
-    db.vacuum(dry_run=args.dry_run, full=args.vacuum_full)
+    run_vacuum(db, args)
+
     return 0
 
 
