@@ -139,6 +139,7 @@ class DB:
 
         cur_isolation = self.conn.isolation_level
 
+        logging.debug(f'Running VACUUM query: {query}')
         try:
             self.conn.set_isolation_level(0)
             curs = self.conn.cursor()
@@ -169,25 +170,25 @@ class DB:
         # Go all the way back if nothing is specified for end time
         end_time = datetime(1970, 1, 1) if not end_time else end_time
         entity_ids = self._get_entities()
+        num_keys = self._get_num_keys()
 
-        total_rollups = 0
+        total_rollups = len(entity_ids) * num_keys
         count = 0
         for eid in entity_ids:
             logging.debug('Running rollups for ent id: {}'.format(eid))
             key_ids = self._get_keys_for_ent(eid)
-            if not total_rollups:
-                total_rollups = len(entity_ids) * len(key_ids)
             for kid in key_ids:
                 count += 1
                 perc = (count / total_rollups) * 100
                 logging.debug(
-                    'Running rollups for key id: {}; {:.01f}% complete'.format(
+                    'Running rollups for key id: {}; ~{:.01f}% complete'.format(
                         kid,
                         perc,
                     )
                 )
                 self._rollup_and_del(
                     start_time, roll_period, eid, kid, end_time, dry_run)
+
 
     def mv_table_to_tblspace(self, table, tablespace, dry_run=False):
         """
@@ -331,6 +332,14 @@ class DB:
             ret = curs.fetchall()
 
         return [k[0] for k in ret]
+
+    def _get_num_keys(self) -> int:
+        query = 'SELECT count(*) FROM keys'
+
+        with self.conn.cursor() as curs:
+            curs.execute(query)
+            res = curs.fetchone()
+            return int(res[0])
 
     def _get_conn(self) -> psycopg2.extensions.connection:
         """
