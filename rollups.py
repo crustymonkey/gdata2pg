@@ -186,6 +186,7 @@ def main():
 
     # Now, try and cleanup disk space
     run_vacuum(db, args)
+    logging.info('All work completed, exiting')
 
     return 0
 
