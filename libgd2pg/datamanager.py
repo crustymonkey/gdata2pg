@@ -44,6 +44,7 @@ class DataManager:
             data = [data]
 
         # Loop over all the data dicts, and manage those
+        self.LOCK.acquire()
         for d in data:
             try:
                 ent = d['host']
@@ -53,6 +54,7 @@ class DataManager:
                 continue
 
             self.ent_map[ent].append(d)
+        self.LOCK.release()
 
     def get_metrics(self) -> Dict[str, Dict[str, Any]]:
         """
@@ -67,7 +69,7 @@ class DataManager:
                 # DataTups to create an intermediate dictionary that we can use
                 # to compute the aggregated data points
                 agg_dtups = self._get_agg_dtups(data)
-                
+
                 # Now we need to get the computed metrics for the data
                 comp_metrics = self._get_comp_metrics(agg_dtups)
 
