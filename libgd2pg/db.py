@@ -50,7 +50,10 @@ class DB:
         except Exception as e:
             # Log the exception and roll back
             logging.exception('Failed to insert metrics into the db')
-            self.conn.rollback()
+            try:
+                self.conn.rollback()
+            except Exception:
+                logging.exception('Failure on rollback')
         else:
             self.conn.commit()
             ret = True
