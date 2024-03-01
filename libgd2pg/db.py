@@ -274,7 +274,20 @@ class DB:
         except Exception as e:
             # Log the exception and roll back
             logging.exception('Failed to insert metrics into the db')
-            self.conn.rollback()
+            try:
+                self.conn.rollback()
+            except Exception as e:
+                logging.exception('Error during rollback')
+                self._get_conn()
+                # Retry
+                return self._rollup_and_del(
+                    start_time,
+                    roll_period,
+                    ent_id,
+                    key_id,
+                    end_time,
+                    dry_run,
+                )
         else:
             self.conn.commit()
 

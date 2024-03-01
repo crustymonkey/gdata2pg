@@ -56,6 +56,8 @@ def get_args():
         help='Do a full vacuum after rollups [default: %(default)s]')
     p.add_argument('-v', '--vacuum-time', default='9:00:00',
         help='Sleep until this time to run the vacuum [default: %(default)s]')
+    p.add_argument('-F', '--force-partition-only', default=False,
+        action='store_true', help='Force the partition creation and exit')
     p.add_argument('-D', '--debug', action='store_true', default=False,
         help='Add debug output [default: %(default)s]')
 
@@ -85,7 +87,7 @@ def do_rollups(db, conf, args):
 
 def do_partition(base_tbl, db, conf, args):
     gm = time.gmtime()
-    if gm.tm_mday > 7:
+    if gm.tm_mday > 7 and not args.force_partition_only:
         # Only create next month's partition during the first week of a
         # new month
         logging.debug(
@@ -175,18 +177,20 @@ def main():
     conf.read(args.config)
 
     db = DB(conf)
-    if args.also_tablespace:
+    if args.also_tablespace and not args.force_partition_only:
         do_tablespace_rollup(db, conf, args)
-
-    do_rollups(db, conf, args)
 
     if args.also_partition:
         do_partition('tsd', db, conf, args)
         do_partition('weblogs', db, conf, args)
 
+    if not args.force_partition_only:
+        do_rollups(db, conf, args)
+
     # Now, try and cleanup disk space
-    run_vacuum(db, args)
-    logging.info('All work completed, exiting')
+    if not args.force_partition_only:
+        run_vacuum(db, args)
+        logging.info('All work completed, exiting')
 
     return 0
 
