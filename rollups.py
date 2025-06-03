@@ -12,7 +12,7 @@ from libgd2pg.config import GDConfig
 
 PART_TPL = '{table}_{year}{month}'
 TSD_INDEXES = (
-    'CREATE INDEX IF NOT EXISTS {table}_added_idx ON {table} (added)',
+    'CREATE INDEX IF NOT EXISTS {table}_added_desc_idx ON {table} (added) DESC',
     'CREATE INDEX IF NOT EXISTS {table}_entity_id_idx ON {table} (entity_id)',
     'CREATE INDEX IF NOT EXISTS {table}_key_id_idx ON {table} (key_id)',
     'CREATE INDEX IF NOT EXISTS {table}_id_idx ON {table} (id)',
@@ -23,7 +23,7 @@ WEBLOGS_INDEXES = (
     'CREATE INDEX IF NOT EXISTS {table}_city_idx ON {table} (city)',
     'CREATE INDEX IF NOT EXISTS {table}_country_idx ON {table} (country)',
     'CREATE INDEX IF NOT EXISTS {table}_country_iso_code_idx ON {table} (country_iso_code)',
-    'CREATE INDEX IF NOT EXISTS {table}_dt_idx ON {table} (dt)',
+    'CREATE INDEX IF NOT EXISTS {table}_dt_desc_idx ON {table} (dt) DESC',
     'CREATE INDEX IF NOT EXISTS {table}_host_idx ON {table} (host)',
     'CREATE INDEX IF NOT EXISTS {table}_id_idx ON {table} (id)',
     'CREATE INDEX IF NOT EXISTS {table}_ip_idx ON {table} (ip)',

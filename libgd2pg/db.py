@@ -98,7 +98,10 @@ class DB:
                         if val is not None:
                             logging.debug(f'Running insert with {entity} '
                                 f'{key} {dt_str} {val}')
-                            curs.execute(query, (entity, key, dt_str, val))
+                            curs.execute(
+                                query,
+                                (entity, key, dt_str, float(val))
+                            )
                         else:
                             logging.warn(
                                 f'Found an invalid value for {entity}::{key}, '
