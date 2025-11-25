@@ -82,7 +82,7 @@ def do_rollups(db, conf, args):
             end = dparse(end)
         period = conf[roll].getint('rollup_period')
         logging.debug('Running rollup for {}'.format(roll))
-        db.do_rollup(start, period, end, args.dry_run)
+        db.do_rollup(start, period, end, args.dry_run, conf.getboolean('main', 'use_disk'))
 
 
 def do_partition(base_tbl, db, conf, args):

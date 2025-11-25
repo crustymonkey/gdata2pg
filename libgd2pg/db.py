@@ -1,5 +1,8 @@
+import csv
+import os
 import psycopg2
 import logging
+import subprocess as sp
 import time
 from datetime import datetime, timedelta
 from textwrap import dedent
@@ -169,6 +172,7 @@ class DB:
             roll_period: int,
             end_time: Optional[datetime]=None,  # Further back in time
             dry_run: Optional[bool]=False,  # Rollback the changes
+            use_disk: Optional[bool]=False,  # Use sql -> csv on disk
             ):
         """
         This will do a rollup for a time period and an aggregation period
@@ -178,11 +182,16 @@ class DB:
         entity_ids = self._get_entities()
 
         for eid in entity_ids:
+            if use_disk:
+                self._rollup_w_disk(start_time, roll_period, eid, end_time, dry_run)
+                continue
+
             count = 0
             key_ids = self._get_keys_for_ent(eid)
             logging.debug(
                 f'Running {len(key_ids)} key rollups for ent id: {eid}'
             )
+
             for kid in key_ids:
                 count += 1
                 perc = (count / len(key_ids)) * 100
@@ -214,6 +223,104 @@ class DB:
         else:
             self.conn.commit()
 
+    def _rollup_w_disk(
+            self,
+            start_time: datetime,
+            roll_period: int,
+            ent_id: int,
+            end_time: datetime,
+            dry_run: bool):
+        tmpdir = self.config['main']['tmpdir']
+        query = dedent(
+            '''
+            COPY (
+                SELECT id, key_id, added, value
+                FROM tsd
+                WHERE
+                    entity_id = %s
+                    AND added > %s
+                    AND added < %s
+                ORDER BY added
+            )
+            TO %s
+            WITH (FORMAT CSV)
+            '''
+        )
+
+        stime = start_time.strftime('%Y-%m-%d %H:%M:%S')
+        etime = end_time.strftime('%Y-%m-%d %H:%M:%S')
+        outfile = os.path.join(tmpdir, f'{ent_id}_unsorted.csv')
+
+        # Dump it to disk
+        logging.info(f'Running rollups for ent_id: {ent_id}')
+        with self.conn.cursor() as curs:
+            curs.execute(query, (ent_id, etime, stime, outfile))
+        self.conn.commit()
+
+        # Now we need to sort the file
+        soutfile = os.path.join(tmpdir, f'{ent_id}_sorted.csv')
+        cmd = ['sort', '-T', '/var/tmp', '-t,', '-nk2', '-o', soutfile, outfile]
+        logging.debug(f'Running the sort of {outfile}')
+        try:
+            sp.run(cmd, check=True)
+        except Exception as e:
+            logging.error(f'Failed to sort the output file: {e}')
+            return
+
+        logging.debug(f'Removing data file: {outfile}')
+        try:
+            os.unlink(outfile)
+        except Exception as e:
+            logging.error(f'Failed remove file {outfile}: {e}')
+
+        row_count = 0
+        with open(soutfile) as fh:
+            for _ in fh:
+                row_count += 1
+
+        logging.debug(f'Processing {row_count} rows for ent {ent_id}')
+
+        # We have our data, time to process it
+        with open(soutfile) as fh:
+            rdr = csv.reader(fh)
+            cur_kid = -1
+            cur_items = []
+            cur_rows = 0
+
+            for row in rdr:
+                if cur_kid != -1 and row[1] != cur_kid:
+                    # We have a new key val, so process and reset
+                    logging.debug(f'Running compression for {cur_kid}')
+                    cur_rows += len(cur_items)
+                    self._compress_and_update(ent_id, cur_kid, roll_period, cur_items, dry_run)
+
+                    # Get the completion percent
+                    pcomp = cur_rows / row_count * 100
+                    logging.debug(f'Ent {ent_id} ~{pcomp:.02f}% complete')
+
+                    # Reset vars
+                    cur_items = []
+                    cur_kid = row[1]
+                elif cur_kid == -1:
+                    cur_kid = row[1]
+
+                # Now just add the row to the buffer
+                cur_items.append((
+                    int(row[0]),
+                    datetime.fromisoformat(row[2] + 'Z'),
+                    float(row[3]),
+                ))
+
+            # And finally, process the last results
+            logging.debug(f'Running compression for {cur_kid}')
+            self._compress_and_update(ent_id, cur_kid, roll_period, cur_items, dry_run)
+            logging.debug(f'Completed ent {ent_id}')
+
+        try:
+            os.unlink(soutfile)
+        except Exception as e:
+            logging.error(f'Failed remove file {soutfile}: {e}')
+
     def _rollup_and_del(
             self,
             start_time: datetime,
@@ -235,15 +342,6 @@ class DB:
             '''
         )
 
-        ins_query = dedent(
-            '''
-            INSERT INTO tsd (entity_id, key_id, added, value)
-            VALUES (%s, %s, %s, %s)
-            '''
-        )
-
-        del_query = 'DELETE FROM tsd WHERE id in ({})'
-
         stime = start_time.strftime('%Y-%m-%d %H:%M:%S')
         etime = end_time.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -256,6 +354,26 @@ class DB:
         if not to_compress:
             # If we have no metrics for the period, return
             return
+
+        self._compress_and_update(ent_id, key_id, roll_period, to_compress, dry_run)
+
+    def _compress_and_update(
+            self,
+            ent_id: int,
+            key_id: int,
+            roll_period: int,
+            to_compress: List[Tuple[int, datetime, float]],
+            dry_run: Optional[bool]=False,
+        ):
+
+        del_query = 'DELETE FROM tsd WHERE id in ({})'
+
+        ins_query = dedent(
+            '''
+            INSERT INTO tsd (entity_id, key_id, added, value)
+            VALUES (%s, %s, %s, %s)
+            '''
+        )
 
         new_vals = self._compress_vals(to_compress, roll_period)
         # modify new vals for db insertion
@@ -282,24 +400,18 @@ class DB:
             except Exception as e:
                 logging.exception('Error during rollback')
                 self._get_conn()
-                # Retry
-                return self._rollup_and_del(
-                    start_time,
-                    roll_period,
-                    ent_id,
-                    key_id,
-                    end_time,
-                    dry_run,
-                )
         else:
             self.conn.commit()
 
     def _compress_vals(
             self,
-            to_compress: List[Tuple[int, str, float]],
+            to_compress: List[Tuple[int, datetime, float]],
             roll_period: int) -> List[Tuple[str, float]]:
         td = timedelta(seconds=roll_period)
         ret = []
+
+        # Sort the stuff to compress by the datetime
+        to_compress = sorted(to_compress, key=lambda x: x[1])
 
         cur_dt = to_compress[0][1]
         last_add = to_compress[0][1]
