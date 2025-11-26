@@ -166,6 +166,26 @@ class DB:
 
         return ret
 
+    def mv_table_to_tblspace(self, table, tablespace, dry_run=False):
+        """
+        Move the specified table to a different tablespace
+        """
+        mv_query = f'ALTER TABLE {table} SET TABLESPACE {tablespace}'
+        try:
+            with self.conn.cursor() as curs:
+                curs.execute(mv_query)
+                if dry_run:
+                    self.conn.rollback()
+        except psycopg2.errors.AdminShutdown:
+            logging.error('The connection has been terminated, reconnecting')
+            self.conn = self._get_conn()
+        except Exception as e:
+            # Log the exception and roll back
+            logging.exception(f'Failed to move {table} to {tablespace}: {e}')
+            self.conn.rollback()
+        else:
+            self.conn.commit()
+
     def do_rollup(
             self,
             start_time: datetime,  # Most recent time
@@ -201,27 +221,6 @@ class DB:
                 )
                 self._rollup_and_del(
                     start_time, roll_period, eid, kid, end_time, dry_run)
-
-
-    def mv_table_to_tblspace(self, table, tablespace, dry_run=False):
-        """
-        Move the specified table to a different tablespace
-        """
-        mv_query = f'ALTER TABLE {table} SET TABLESPACE {tablespace}'
-        try:
-            with self.conn.cursor() as curs:
-                curs.execute(mv_query)
-                if dry_run:
-                    self.conn.rollback()
-        except psycopg2.errors.AdminShutdown:
-            logging.error('The connection has been terminated, reconnecting')
-            self.conn = self._get_conn()
-        except Exception as e:
-            # Log the exception and roll back
-            logging.exception(f'Failed to move {table} to {tablespace}: {e}')
-            self.conn.rollback()
-        else:
-            self.conn.commit()
 
     def _rollup_w_disk(
             self,
