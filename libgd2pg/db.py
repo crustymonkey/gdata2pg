@@ -292,7 +292,8 @@ class DB:
                     # We have a new key val, so process and reset
                     logging.debug(f'Running compression for {cur_kid}')
                     cur_rows += len(cur_items)
-                    self._compress_and_update(ent_id, cur_kid, roll_period, cur_items, dry_run)
+                    if cur_items:
+                        self._compress_and_update(ent_id, cur_kid, roll_period, cur_items, dry_run)
 
                     # Get the completion percent
                     pcomp = cur_rows / row_count * 100
@@ -312,8 +313,9 @@ class DB:
                 ))
 
             # And finally, process the last results
-            logging.debug(f'Running compression for {cur_kid}')
-            self._compress_and_update(ent_id, cur_kid, roll_period, cur_items, dry_run)
+            if cur_items:
+                logging.debug(f'Running compression for {cur_kid}')
+                self._compress_and_update(ent_id, cur_kid, roll_period, cur_items, dry_run)
             logging.debug(f'Completed ent {ent_id}')
 
         try:
@@ -376,6 +378,7 @@ class DB:
         )
 
         new_vals = self._compress_vals(to_compress, roll_period)
+
         # modify new vals for db insertion
         new_vals = [(ent_id, key_id, d, v) for d, v in new_vals]
 
